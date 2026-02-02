@@ -9,7 +9,7 @@ from pathlib import Path
 
 _DEFAULT_OBSIDIAN_INBOX = (
     "/Users/ikmx/Library/CloudStorage/"
-    "GoogleDrive-yuzuponikemi@gmail.com/My Drive/ikmx-memo"
+    "GoogleDrive-yuzuponikemi@gmail.com/My Drive/ikmx-memo/08_cc-trace"
 )
 
 

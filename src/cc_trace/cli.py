@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 1
 
-    _setup_logging(args.verbose)
+    _setup_logging(getattr(args, "verbose", False))
 
     if args.command == "sync":
         overrides = {}

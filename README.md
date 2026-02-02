@@ -15,6 +15,26 @@ cc-trace は、このログから**対話の文脈**だけを抽出します。
 
 コードブロックは `[Code Block: python, 45 lines]` のようなプレースホルダーに置換され、「何を書いたか」ではなく「なぜ書いたか」が残ります。
 
+## 前提: Claude Code のログ自動削除を無効化する
+
+Claude Code は**デフォルトで 30 日経過したセッションログを起動時に自動削除**します。cc-trace で過去のログを処理するには、この削除を無効化する必要があります。
+
+`~/.claude/settings.json` に `cleanupPeriodDays` を追加してください。
+
+```json
+{
+  "cleanupPeriodDays": 99999
+}
+```
+
+| 値 | 意味 |
+|---|---|
+| 未設定 | 30 日で削除（デフォルト） |
+| `99999` | 実質無期限保持（推奨） |
+| `0` | **全ログ即時削除（危険）** |
+
+cc-trace の cron を設定していれば、仮に Claude Code がログを削除しても Obsidian 側に Markdown が残ります。ただし取りこぼしを防ぐため、`cleanupPeriodDays` の設定を推奨します。
+
 ## セットアップ
 
 ```bash

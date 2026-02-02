@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -13,6 +14,11 @@ from .parser import parse_session
 from .transformer import transform_session
 
 logger = logging.getLogger(__name__)
+
+# Main session files are UUIDs: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.jsonl
+_MAIN_SESSION_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$"
+)
 
 
 def _compute_hash(path: Path) -> str:
@@ -71,9 +77,16 @@ def sync(config: Config) -> int:
     processed_count = 0
     now = time.time()
 
-    # Find all JSONL files
-    jsonl_files = sorted(projects_dir.rglob("*.jsonl"))
-    logger.info("Found %d JSONL files", len(jsonl_files))
+    # Find main session JSONL files only (skip subagents, prompt suggestions, etc.)
+    all_jsonl = sorted(projects_dir.rglob("*.jsonl"))
+    jsonl_files = [
+        p for p in all_jsonl
+        if _MAIN_SESSION_RE.match(p.name) and "subagents" not in p.parts
+    ]
+    logger.info(
+        "Found %d main session files (%d total JSONL, %d skipped agent/subagent)",
+        len(jsonl_files), len(all_jsonl), len(all_jsonl) - len(jsonl_files),
+    )
 
     for jsonl_path in jsonl_files:
         path_key = str(jsonl_path)

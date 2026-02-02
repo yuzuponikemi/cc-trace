@@ -26,7 +26,10 @@ def _create_test_env(tmp_path: Path) -> tuple[Path, Path, Path, Config]:
     return projects_dir, inbox, state_file, config
 
 
-def _write_session_jsonl(projects_dir: Path, session_id: str = "test-sess") -> Path:
+_TEST_UUID = "a1b2c3d4-0000-4000-8000-000000000001"
+
+
+def _write_session_jsonl(projects_dir: Path, session_id: str = _TEST_UUID) -> Path:
     """Write a minimal valid session JSONL."""
     path = projects_dir / f"{session_id}.jsonl"
     records = [
@@ -91,7 +94,7 @@ def test_sync_reprocesses_changed_file(tmp_path):
         record = {
             "type": "user",
             "userType": "external",
-            "sessionId": "test-sess",
+            "sessionId": _TEST_UUID,
             "timestamp": "2026-02-02T11:00:00Z",
             "message": {"role": "user", "content": "New question"},
         }
@@ -118,6 +121,35 @@ def test_sync_no_projects_dir(tmp_path):
         obsidian_inbox=tmp_path / "inbox",
         state_file=tmp_path / "state.json",
     )
+    count = sync(config)
+    assert count == 0
+
+
+def test_sync_skips_agent_files(tmp_path):
+    projects_dir, inbox, state_file, config = _create_test_env(tmp_path)
+
+    # Write an agent file (should be skipped)
+    agent_path = projects_dir / "agent-a1b2c3d.jsonl"
+    agent_path.write_text('{"type":"user","userType":"external","sessionId":"x","message":{"role":"user","content":"hi"}}\n')
+
+    # Write a prompt suggestion file (should be skipped)
+    prompt_path = projects_dir / "agent-aprompt_suggestion-abc123.jsonl"
+    prompt_path.write_text('{"type":"user","userType":"external","sessionId":"x","message":{"role":"user","content":"hi"}}\n')
+
+    count = sync(config)
+    assert count == 0
+    assert list(inbox.glob("*.md")) == []
+
+
+def test_sync_skips_subagent_directory(tmp_path):
+    projects_dir, inbox, state_file, config = _create_test_env(tmp_path)
+
+    # Write a JSONL inside a subagents directory (should be skipped even with UUID name)
+    subagent_dir = projects_dir / _TEST_UUID / "subagents"
+    subagent_dir.mkdir(parents=True)
+    sub_path = subagent_dir / "a1b2c3d4-0000-4000-8000-000000000099.jsonl"
+    sub_path.write_text('{"type":"user","userType":"external","sessionId":"x","message":{"role":"user","content":"hi"}}\n')
+
     count = sync(config)
     assert count == 0
 
