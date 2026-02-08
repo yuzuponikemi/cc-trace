@@ -1,3 +1,9 @@
+# Activity data (raw exports, not for version control)
+gemini-myactivity/
+
+# Gemini browser state (contains authentication cookies)
+gemini-browser-state.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

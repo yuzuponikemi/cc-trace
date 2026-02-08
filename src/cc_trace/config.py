@@ -12,6 +12,23 @@ _DEFAULT_OBSIDIAN_INBOX = (
     "GoogleDrive-yuzuponikemi@gmail.com/My Drive/ikmx-memo/08_cc-trace"
 )
 
+_DEFAULT_CONFIG_DIR = Path.home() / ".config" / "cc-trace"
+
+
+@dataclass
+class GeminiConfig:
+    """Configuration for Gemini module."""
+
+    browser_state: Path = field(
+        default_factory=lambda: _DEFAULT_CONFIG_DIR / "gemini-browser-state.json"
+    )
+    crawl_cache: Path = field(
+        default_factory=lambda: _DEFAULT_CONFIG_DIR / "gemini-crawl-cache.json"
+    )
+    state_file: Path = field(
+        default_factory=lambda: _DEFAULT_CONFIG_DIR / "gemini-sync-state.json"
+    )
+
 
 @dataclass
 class Config:
@@ -24,6 +41,7 @@ class Config:
     )
     staleness_threshold: int = 300  # seconds since last modification
     verbose: bool = False
+    gemini: GeminiConfig = field(default_factory=GeminiConfig)
 
     @property
     def projects_dir(self) -> Path:
@@ -59,4 +77,15 @@ class Config:
             config.staleness_threshold = int(data["staleness_threshold"])
         if "verbose" in data:
             config.verbose = bool(data["verbose"])
+
+        # Apply Gemini config if present
+        if "gemini" in data:
+            gemini_data = data["gemini"]
+            if "browser_state" in gemini_data:
+                config.gemini.browser_state = Path(gemini_data["browser_state"]).expanduser()
+            if "crawl_cache" in gemini_data:
+                config.gemini.crawl_cache = Path(gemini_data["crawl_cache"]).expanduser()
+            if "state_file" in gemini_data:
+                config.gemini.state_file = Path(gemini_data["state_file"]).expanduser()
+
         return config

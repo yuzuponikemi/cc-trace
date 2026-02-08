@@ -5,6 +5,9 @@ description = "Extract Claude Code session logs into Obsidian Markdown"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+gemini = ["playwright>=1.40"]
+
 [project.scripts]
 cc-trace = "cc_trace.cli:main"
 

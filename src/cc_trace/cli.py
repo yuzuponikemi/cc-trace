@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 from .config import Config
 from .scheduler import install_cron, uninstall_cron
@@ -18,6 +19,49 @@ def _setup_logging(verbose: bool) -> None:
         level=level,
         stream=sys.stderr,
     )
+
+
+def _handle_gemini_login(args: argparse.Namespace, config: Config) -> int:
+    """Handle gemini login command."""
+    from .gemini.crawler import login
+
+    timeout = getattr(args, "timeout", 120)
+    success = login(config, timeout=timeout)
+    if success:
+        print("Login successful. Browser state saved.")
+        return 0
+    else:
+        print("Login failed or timed out.")
+        return 1
+
+
+def _handle_gemini_crawl(args: argparse.Namespace, config: Config) -> int:
+    """Handle gemini crawl command."""
+    from .gemini.crawler import crawl
+
+    timeout = getattr(args, "timeout", 30)
+    limit = getattr(args, "limit", 0)
+    count = crawl(config, timeout=timeout, limit=limit)
+    print(f"Crawled {count} conversation(s)")
+    return 0
+
+
+def _handle_gemini_sync(args: argparse.Namespace, config: Config) -> int:
+    """Handle gemini sync command."""
+    from .gemini.sync import sync as gemini_sync
+
+    takeout_path = Path(args.takeout).expanduser()
+    if not takeout_path.exists():
+        print(f"Takeout file not found: {takeout_path}")
+        return 1
+
+    inbox_override = None
+    if args.inbox:
+        inbox_override = Path(args.inbox).expanduser()
+
+    count = gemini_sync(config, takeout_path, inbox_override=inbox_override)
+    print(f"Wrote {count} file(s)")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -37,6 +81,46 @@ def main(argv: list[str] | None = None) -> int:
     cron_group = cron_parser.add_mutually_exclusive_group(required=True)
     cron_group.add_argument("--install", action="store_true", help="Install cron job")
     cron_group.add_argument("--uninstall", action="store_true", help="Uninstall cron job")
+
+    # gemini subcommand group
+    gemini_parser = subparsers.add_parser("gemini", help="Gemini conversation tools")
+    gemini_parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    gemini_subparsers = gemini_parser.add_subparsers(dest="gemini_command")
+
+    # gemini login
+    gemini_login_parser = gemini_subparsers.add_parser(
+        "login", help="Login to Gemini in browser"
+    )
+    gemini_login_parser.add_argument(
+        "--timeout", type=int, default=120,
+        help="Login timeout in seconds (default: 120)"
+    )
+
+    # gemini crawl
+    gemini_crawl_parser = gemini_subparsers.add_parser(
+        "crawl", help="Crawl Gemini conversation structure"
+    )
+    gemini_crawl_parser.add_argument(
+        "--timeout", type=int, default=30,
+        help="Page load timeout in seconds (default: 30)"
+    )
+    gemini_crawl_parser.add_argument(
+        "--limit", type=int, default=0,
+        help="Max conversations to crawl (0 = all)"
+    )
+
+    # gemini sync
+    gemini_sync_parser = gemini_subparsers.add_parser(
+        "sync", help="Sync Takeout + crawl data to Obsidian"
+    )
+    gemini_sync_parser.add_argument(
+        "--takeout", type=str, required=True,
+        help="Path to My Activity.json from Google Takeout"
+    )
+    gemini_sync_parser.add_argument(
+        "--inbox", type=str,
+        help="Override Obsidian inbox path"
+    )
 
     args = parser.parse_args(argv)
 
@@ -65,6 +149,20 @@ def main(argv: list[str] | None = None) -> int:
             msg = uninstall_cron()
         print(msg)
         return 0
+
+    if args.command == "gemini":
+        if not args.gemini_command:
+            gemini_parser.print_help()
+            return 1
+
+        config = Config.load()
+
+        if args.gemini_command == "login":
+            return _handle_gemini_login(args, config)
+        elif args.gemini_command == "crawl":
+            return _handle_gemini_crawl(args, config)
+        elif args.gemini_command == "sync":
+            return _handle_gemini_sync(args, config)
 
     return 1
 
