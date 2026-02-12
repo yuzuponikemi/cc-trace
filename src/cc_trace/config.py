@@ -31,6 +31,18 @@ class GeminiConfig:
 
 
 @dataclass
+class DistillConfig:
+    """Configuration for self-distillation module."""
+
+    state_file: Path = field(
+        default_factory=lambda: _DEFAULT_CONFIG_DIR / "distill-state.json"
+    )
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "gemma3"
+    ollama_timeout: int = 120
+
+
+@dataclass
 class Config:
     claude_dir: Path = field(default_factory=lambda: Path.home() / ".claude")
     obsidian_inbox: Path = field(
@@ -42,6 +54,7 @@ class Config:
     staleness_threshold: int = 300  # seconds since last modification
     verbose: bool = False
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
+    distill: DistillConfig = field(default_factory=DistillConfig)
 
     @property
     def projects_dir(self) -> Path:
@@ -87,5 +100,17 @@ class Config:
                 config.gemini.crawl_cache = Path(gemini_data["crawl_cache"]).expanduser()
             if "state_file" in gemini_data:
                 config.gemini.state_file = Path(gemini_data["state_file"]).expanduser()
+
+        # Apply Distill config if present
+        if "distill" in data:
+            distill_data = data["distill"]
+            if "state_file" in distill_data:
+                config.distill.state_file = Path(distill_data["state_file"]).expanduser()
+            if "ollama_url" in distill_data:
+                config.distill.ollama_url = str(distill_data["ollama_url"])
+            if "ollama_model" in distill_data:
+                config.distill.ollama_model = str(distill_data["ollama_model"])
+            if "ollama_timeout" in distill_data:
+                config.distill.ollama_timeout = int(distill_data["ollama_timeout"])
 
         return config
